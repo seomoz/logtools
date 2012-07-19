@@ -1,0 +1,15 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Probably never to be used, because the logs files are really too large
+# to use for testing purposes, sigh.
+
+from MergingLogReader import MergingLogReader
+
+r = MergingLogReader('/var/log/attercob-crawlers-0', '/var/log/attercob-crawlers-1', reverse=True)
+
+while True:
+    l = r.readline()
+    if l == '':
+        break
+    sys.stdout.write(l)
