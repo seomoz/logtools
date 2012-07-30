@@ -1,0 +1,38 @@
+Code I have found useful for combing through the great volume of stuff
+written to the attercob logs.
+
+LogParser.py
+    Parses log file entries into a structured form. Is aware that
+    a log entry will consume multiple lines of output if it logs
+    an exception
+    
+MergingLogReader.py
+    Code that needs to be updated to use the parser above. It is
+    related to merging multiple log files so that the output is in
+    chronological order. Not currently used for much
+    
+find-exceptions [file [...]]
+    Uses LogParser to find log lines containing "interesting"
+    exceptions, i.e.  ones that are not typically thrown in the
+    normal operation of the crawler.
+    
+lfgrep string [file [...]]
+    Like fgrep (does not match patterns, only verbatim strings),
+    but reads the log file using LogParser, so all of matching
+    multi-line log entries get printed.
+
+lftail [-initialize] [-set] file [...]
+    Output data which were appended to a file since this command
+    was last run.
+
+Normal usage would be to start by remembering the current ends of
+the log files:
+    lftail -set /var/log/attercob-crawlers-?
+    
+Then keep en eye on them by every so often doing:
+    lftail /var/log/attercob-crawlers-? | find-exceptions
+or maybe even more specific:
+    lftail /var/log/attercob-crawlers-? | lfgrep 'File "/usr/local/lib/python2.7/site-packages/attercob/Crawl.py"'
+
+Of course, you can always just use tail -f instead of lftail if
+you prefer to watch the logs in real-time.
