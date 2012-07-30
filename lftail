@@ -110,7 +110,7 @@ if 'HOME' in os.environ:
     memfile = os.path.join(os.environ['HOME'], memfile)
 
 # Parse arguments
-parser = argparse.ArgumentParser(description='Search an attercob log file for a pattern.', prog=MYNAME)
+parser = argparse.ArgumentParser(description='Output unread lines in a log file.', prog=MYNAME)
 # parser.add_argument('-ignore-case', '-i', help='Ignore case in matches.')
 parser.add_argument('-initialize', action='store_true', help='Reset the memory file.')
 parser.add_argument('-set', action='store_true', help='Set remembered location to current EOF.')
