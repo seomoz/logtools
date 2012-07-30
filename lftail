@@ -44,7 +44,7 @@ def loadmem():
     global memfile, memory
 
     try:
-        fp = open(memfile, 'rb')
+        fp = open(memfile, 'r')
     except IOError:
         # If no file, nothing to read.
         return
@@ -55,8 +55,8 @@ def loadmem():
 def savemem():
     global memfile, memory
 
-    with open(memfile, 'wb') as fp:
-        dump(memory, fp, 2)
+    with open(memfile, 'w') as fp:
+        dump(memory, fp)
 
 # Given a file object, get a unique identifier string (within this host)
 # for it.
