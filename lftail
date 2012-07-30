@@ -1,0 +1,142 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2011 SEOmoz
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Output the parts of a log file that we haven't seen before.
+
+# I m p o r t s
+
+import os, sys
+import argparse
+from cPickle import load, dump
+
+# V a r i a b l e s
+
+MYNAME  = os.path.basename(sys.argv[0])
+BUFSIZE = 1048576
+memfile = ".lftail_memory"
+memory = { }
+
+# F u n c t i o n s
+
+# Load in dict of remembered offsets
+def loadmem():
+    global memfile, memory
+
+    try:
+        fp = open(memfile, 'rb')
+    except IOError:
+        # If no file, nothing to read.
+        return
+    memory = load(fp)
+    fp.close()
+
+# Save dict of remembered offsets
+def savemem():
+    global memfile, memory
+
+    with open(memfile, 'wb') as fp:
+        dump(memory, fp, 2)
+
+# Given a file object, get a unique identifier string (within this host)
+# for it.
+def getkey(fp):
+    s = os.fstat(fp.fileno())
+    return "%016lx%08x" % (s.st_dev, s.st_ino)
+
+# Set offset for a file to where we last were. If it's a new file, start
+# at the beginning.
+def getoffset(fp):
+    global memory
+    k = getkey(fp)
+    if k not in memory:
+        memory[k] = 0
+    # If current maximum offset is less than where we were, it means file was
+    # probably truncated to 0 bytes at some time and should be read in its
+    # entirety.
+    fp.seek(0, os.SEEK_END)
+    maxoff = fp.tell()
+    if memory[k] < maxoff:
+        fp.seek(memory[k])
+    elif memory[k] != maxoff:
+        fp.seek(0)
+
+# Remember the last spot we read in a file.
+def saveoffset(fp):
+    global memory
+    memory[getkey(fp)] = fp.tell()
+
+# Given a file, output the new stuff since we last read it
+def tailit(fp):
+    global BUFSIZE
+    getoffset(fp)
+    while True:
+        data = fp.read(BUFSIZE)
+        if data == '':
+            break
+        sys.stdout.write(data)
+    saveoffset(fp)
+
+# Set offset to current EOF
+def setit(fp):
+    global memory
+    fp.seek(0, os.SEEK_END)
+    memory[getkey(fp)] = fp.tell()
+
+# M a i n   P r o g r a m
+
+# Initialize the memfile name
+if 'HOME' in os.environ:
+    memfile = os.path.join(os.environ['HOME'], memfile)
+
+# Parse arguments
+parser = argparse.ArgumentParser(description='Search an attercob log file for a pattern.', prog=MYNAME)
+# parser.add_argument('-ignore-case', '-i', help='Ignore case in matches.')
+parser.add_argument('-initialize', action='store_true', help='Reset the memory file.')
+parser.add_argument('-set', action='store_true', help='Set remembered location to current EOF.')
+parser.add_argument('files', nargs='*')
+opts = parser.parse_args()
+
+# If initializing, write the current empty dict. If no other args, exit.
+if opts.initialize:
+    savemem()
+    if not opts.files:
+        sys.exit(0)
+
+# Unlike tail(1) we don't do stdin processing
+if not opts.files:
+    sys.stderr.write(MYNAME + ": expecting file name(s)\n")
+    sys.exit(2)
+
+# Determine appropriate operation
+operation = setit if opts.set else tailit
+
+# Process the files
+loadmem()
+for i in opts.files:
+    with open(i, 'rb') as fp:
+        operation(fp)
+savemem()
+
+# AMF
+sys.exit(0)
