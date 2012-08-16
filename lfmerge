@@ -1,0 +1,130 @@
+#! /usr/bin/env python
+# -*- coding: utf-8 -*-
+
+# Copyright (c) 2011 SEOmoz
+#
+# Permission is hereby granted, free of charge, to any person obtaining
+# a copy of this software and associated documentation files (the
+# "Software"), to deal in the Software without restriction, including
+# without limitation the rights to use, copy, modify, merge, publish,
+# distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so, subject to
+# the following conditions:
+#
+# The above copyright notice and this permission notice shall be
+# included in all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+# NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+# LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+# WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# Merge two or more log files (or sets thereof) based on time stamps.
+
+# I m p o r t s
+
+import os, sys
+import argparse, glob
+import LogParser
+
+# V a r i a b l e s
+
+MYNAME  = os.path.basename(sys.argv[0])
+
+# C l a s s e s
+
+# Very trivial, no provision for closing or running in a with statement
+class ConcatReader(object):
+    def __init__(self, names):
+        self._names = names
+        self._nextfile()
+
+    def _nextfile(self):
+        self._fp = open(self._names.pop(), 'r') if self._names else None
+
+    def readline(self):
+        # We've read all our files all the way through. EOF.
+        if not self._fp:
+            return ''
+
+        # If there's more in this file, return it
+        ret = self._fp.readline()
+        if ret != '':
+            return ret
+
+        # If there's no more in this file, try the next one.
+        self._fp.close()
+        self._nextfile()
+        return self.readline()
+
+def timeof(r):
+    if r is None:
+        return '9999-12-31 23:59:59,999'
+    else:
+        return r.first.raw_time
+
+def dtfiles(prefix):
+    ret = glob.glob(opts.item1 + '.*').sort(reverse=True)
+    if os.path.exists(prefix):
+        # Unsuffixed file still has the most recent stuff
+        return [ prefix ] + ret
+    else:
+        # ... if it actually exists.
+        return ret
+
+# M a i n   P r o g r a m
+
+# Parse arguments
+parser = argparse.ArgumentParser(description='Merge log files.', prog=MYNAME)
+# parser.add_argument('-ignore-case', '-i', help='Ignore case in matches.')
+g1 = parser.add_mutually_exclusive_group()
+g1.add_argument('-sequence', action='store_true', help='Parameters specify prefixes, with sequential suffixes added by logrotate.')
+g1.add_argument('-datetime', action='store_true', help='Parameters specify prefixes, with date/time suffixes added by logrotate.')
+g1.add_argument('-multiple', action='store_true', help='Parameters specify files, separated by comma or specified delimiter.')
+parser.add_argument('-delimiter', action='store', help='Delimiter, if not comma, for -multiple.')
+parser.add_argument('item1', action='store')
+parser.add_argument('item2', action='store')
+opts = parser.parse_args()
+
+# Rule out a silly combination
+if opts.delimiter is not None and not opts.multiple:
+    sys.stderr.write("%s: -delimiter only makes sense if -multiple specified\n" % MYNAME)
+    sys.exit(1)
+
+# Determine filesets. These are sorted newest-first.
+if opts.multiple:
+    delim = ',' if opts.delimiter is None else opts.delimiter
+    fileset1 = opts.item1.split(delim)
+    fileset2 = opts.item2.split(delim)
+elif opts.sequence:
+    fileset1 = glob.glob(opts.item1 + '*').sort()
+    fileset2 = glob.glob(opts.item2 + '*').sort()
+elif opts.datetime:
+    fileset1 = dtfiles(opts.item1)
+    fileset2 = dtfiles(opts.item2)
+else:
+    fileset1 = [ opts.item1 ]
+    fileset2 = [ opts.item2 ]
+
+# Open log files and get the first record in each
+stream1 = LogParser.LogReader(ConcatReader(fileset1))
+rec1 = stream1.next()
+stream2 = LogParser.LogReader(ConcatReader(fileset2))
+rec2 = stream2.next()
+
+# Merge.
+while True:
+    if timeof(rec1) < timeof(rec2):
+        sys.stdout.write(rec1.raw)
+        rec1 = stream1.next()
+    elif rec2 is not None:
+        sys.stdout.write(rec2.raw)
+        rec2 = stream2.next()
+    else:
+        break
+
+sys.exit(0)
+

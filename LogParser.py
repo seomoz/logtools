@@ -33,6 +33,9 @@ _MATCH_DATE = r'\d\d\d\d-\d\d-\d\d \d\d:\d\d:\d\d,\d\d\d'
 
 # C l a s s e s
 
+class LogParserError(Exception):
+    pass
+
 class LogReader(object):
     '''Given a file-like object or a string, create an object that
     lets the user read logs on an entry-by-entry  basis.'''
@@ -82,7 +85,7 @@ class LogReader(object):
             self._reader.close()
 
     def __enter__(self):
-        pass
+        return self
 
     def __exit__(self, type, value, traceback):
         self.close()
@@ -107,7 +110,7 @@ class LogFields(object):
     # Dynamically-returned (via getattr) fields, in the order found on a line
     _FIELDS = ['raw_time', 'level', 'module', 'function', 'line_no', 'message']
 
-    _PARSE = re.compile(r'^\[(' + _MATCH_DATE + r')\] ([A-Z]+) in (\w+):(\w+)@(\d+) => (.*)')
+    _PARSE = re.compile(r'^\[(' + _MATCH_DATE + r')\] (?:PID :\s+\d+ )?([A-Z]+) in (\w+):(\w+)@(\d+) => (.*)')
 
     def __init__(self, raw_line):
         self.raw = raw_line
@@ -122,7 +125,10 @@ class LogFields(object):
             return getattr(self, field)
 
     def _doparse(self):
-        rfields = self._PARSE.match(self.raw).groups()
+        try:
+            rfields = self._PARSE.match(self.raw).groups()
+        except AttributeError:
+            raise LogParserError("Unable to parse " + repr(self.raw))
         for i in range(len(self._FIELDS)):
             setattr(self, self._FIELDS[i], rfields[i])
         self.time = LogTime(self.raw_time)
