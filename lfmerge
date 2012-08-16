@@ -60,6 +60,8 @@ class ConcatReader(object):
         self._nextfile()
         return self.readline()
 
+# F u n c t i o n s
+
 def timeof(r):
     if r is None:
         return '9999-12-31 23:59:59,999'
