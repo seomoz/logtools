@@ -69,7 +69,8 @@ def timeof(r):
         return r.first.raw_time
 
 def dtfiles(prefix):
-    ret = glob.glob(opts.item1 + '.*').sort(reverse=True)
+    ret = glob.glob(prefix + '.*')
+    ret.sort(reverse=True)
     if os.path.exists(prefix):
         # Unsuffixed file still has the most recent stuff
         return [ prefix ] + ret
@@ -102,8 +103,10 @@ if opts.multiple:
     fileset1 = opts.item1.split(delim)
     fileset2 = opts.item2.split(delim)
 elif opts.sequence:
-    fileset1 = glob.glob(opts.item1 + '*').sort()
-    fileset2 = glob.glob(opts.item2 + '*').sort()
+    fileset1 = glob.glob(opts.item1 + '*')
+    fileset1.sort()
+    fileset2 = glob.glob(opts.item2 + '*')
+    fileset2.sort()
 elif opts.datetime:
     fileset1 = dtfiles(opts.item1)
     fileset2 = dtfiles(opts.item2)
