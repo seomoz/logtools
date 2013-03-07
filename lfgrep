@@ -25,7 +25,7 @@
 # I m p o r t s
 
 import os, sys
-import argparse
+import argparse, re
 import LogParser
 
 # V a r i a b l e s
@@ -39,6 +39,12 @@ def should_print_normal(entry, s):
 
 def should_print_invert(entry, s):
     return s not in entry
+
+def should_print_regex_normal(entry, s):
+    return re.search(s, entry) is not None
+
+def should_print_regex_invert(entry, s):
+    return re.search(s, entry) is None
 
 def find_em(s, f):
     global IGNORE, should_print
@@ -58,11 +64,15 @@ def find_em(s, f):
 # Parse arguments
 parser = argparse.ArgumentParser(description='Find matching entries in a log file.', prog=MYNAME)
 parser.add_argument('-v', '--invert-match', action='store_true', help='Print lines that DO NOT match.')
+parser.add_argument('-r', '--regexp', action='store_true', help='Match a Python regular expression.')
 parser.add_argument('search_string', nargs=1)
 parser.add_argument('file', nargs='*')
 opts = parser.parse_args()
 
-should_print = should_print_invert if opts.invert_match else should_print_normal
+if opts.regexp:
+    should_print = should_print_regex_invert if opts.invert_match else should_print_regex_normal
+else:
+    should_print = should_print_invert if opts.invert_match else should_print_normal
 
 if not opts.file:
     find_em(opts.search_string[0], sys.stdin)
