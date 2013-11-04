@@ -110,7 +110,7 @@ class LogFields(object):
     # Dynamically-returned (via getattr) fields, in the order found on a line
     _FIELDS = ['raw_time', 'level', 'module', 'function', 'line_no', 'message']
 
-    _PARSE = re.compile(r'^\[(' + _MATCH_DATE + r')\] (?:PID :\s+\d+ )?([A-Z]+) in (\w+):(\w+)@(\d+) => (.*)')
+    _PARSE = re.compile(r'^\[(' + _MATCH_DATE + r')\] (?:PID :\s+\d+ )?([A-Z]+) in ([^:\s]+):(\w+)@(\d+) => (.*)')
 
     def __init__(self, raw_line):
         self.raw = raw_line
