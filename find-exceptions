@@ -29,16 +29,9 @@ import LogParser
 
 # V a r i a b l e s
 
-IGNORE = [ 'PageRedirect:', 'UserPreemptionError:', 'Error: 3', 'Error: 4',
-    'Error: 5', 'DNSLookupError:', 'TimeoutError:', 'ConnectError:',
-    'ConnectionRefusedError:', 'ConnectionDone:', 'ConnectionLost:',
-    'PartialDownloadError:', 'InfiniteRedirection:', 'RedirectWithNoLocation:',
-    'UnsupportedMethod:' ]
-
 # F u n c t i o n s
 
 def find_em(f):
-    global IGNORE
     reader = LogParser.LogReader(f)
 
     while True:
@@ -47,10 +40,8 @@ def find_em(f):
             break
         if len(entry.lines) > 1 and entry.lines[1].startswith('Traceback'):
             printit = True
-            for i in IGNORE:
-                if entry.lines[-1].startswith(i):
-                    printit = False
-                    break
+            if entry.lines[0].find('=> Exception fetching robots.txt for') >= 0:
+                printit = False
             if printit:
                 sys.stdout.write(entry.raw)
 
