@@ -42,6 +42,11 @@ def find_em(f):
             printit = True
             if entry.lines[0].find('=> Exception fetching robots.txt for') >= 0:
                 printit = False
+            else:
+                for line in entry.lines:
+                    if line == "CrawlerThreadException: Shutting down.":
+                        printit = False
+                        break
             if printit:
                 sys.stdout.write(entry.raw)
 
